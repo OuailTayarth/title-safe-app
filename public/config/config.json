@@ -1,0 +1,18 @@
+{
+  "CONTRACT_ADDRESS": "0xbb9A6591dA41D574fBbBbB181fBf0711839B1B40",
+  "SCAN_LINK": "https://sepolia.etherscan.io/tx/0xbb9A6591dA41D574fBbBbB181fBf0711839B1B40",
+  "NETWORK": {
+    "NAME": "Sepolia test network",
+    "SYMBOL": "ETH",
+    "ID": 11155111
+  },
+  "NFT_NAME": "Property title",
+  "SYMBOL": "PTT",
+  "MAX_SUPPLY": 1,
+  "WEI_COST": 13850000000000000000,
+  "DISPLAY_COST": 0,
+  "GAS_LIMIT": 285000,
+  "MARKETPLACE": "Opeansea",
+  "MARKETPLACE_LINK": "https://opensea.io/",
+  "SHOW_BACKGROUND": true
+}
