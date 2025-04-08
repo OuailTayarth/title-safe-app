@@ -6,8 +6,7 @@
     "build": "next build",
     "export": "next build && next export",
     "start": "next start",
-    "lint": "next lint",
-    "postinstall": "npm install --legacy-peer-deps"
+    "lint": "next lint"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",
@@ -28,6 +27,7 @@
     "ethereum-waffle": "^4.0.10",
     "ethers": "5.4",
     "formik": "^2.2.9",
+    "glob": "^10.0.0",
     "hardhat": "^2.14.1",
     "html-react-parser": "^3.0.16",
     "https-browserify": "^1.0.0",
@@ -58,7 +58,6 @@
     "yup": "^1.6.1"
   },
   "devDependencies": {
-    "@fullhuman/postcss-purgecss": "^5.0.0",
     "eslint": "7.32.0",
     "eslint-config-next": "12.0.4",
     "prettier": "^3.5.3"
