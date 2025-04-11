@@ -1,7 +1,7 @@
 import React from "react";
 import mouseEffect from "../../common/mouseEffect";
 
-const Cursor = () => {
+const Cursor = (): JSX.Element => {
   React.useEffect(() => {
     mouseEffect();
   }, []);

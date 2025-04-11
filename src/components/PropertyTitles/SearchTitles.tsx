@@ -15,26 +15,32 @@ import axios from "axios";
 // Custom hooks
 import useAlert from "../useAlert";
 import { CopperLoading } from "respinner";
+import { Property } from "../../models/property";
 
-const SearchTitles = () => {
-  const [properties, setProperties] = useState([]);
-  const [alert, showAlert, showError] = useAlert(10000);
-  const [loadingState, setLoadingState] = useState("not-loaded");
-  const [instrumentNum, setInstrumentNum] = useState("");
-  const [filteredProperties, setFilteredProperties] = useState([]);
-  const [isSearchEnabled, setIsSearchEnabled] = useState(false);
-  const [searchFailed, setSearchFailed] = useState(false);
-  const [searchClicked, setSearchClicked] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
+const SearchTitles = (): JSX.Element => {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [alert, showAlert] = useAlert(10000);
+  const [loadingState, setLoadingState] = useState<"not-loaded" | "loaded">(
+    "not-loaded"
+  );
+  const [instrumentNum, setInstrumentNum] = useState<string>("");
+  const [filteredProperties, setFilteredProperties] = useState<Property[]>([]);
+  const [isSearchEnabled, setIsSearchEnabled] = useState<boolean>(false);
+  const [searchFailed, setSearchFailed] = useState<boolean>(false);
+  const [searchClicked, setSearchClicked] = useState<boolean>(false);
+  const [loadingData, setLoadingData] = useState<boolean>(true);
 
   /**
    * Delays setting the loading state to false after 3 seconds and clears the timeout on cleanup.
    */
   useEffect(() => {
-    const time = setTimeout(() => {
+    let timer: NodeJS.Timeout | undefined;
+    timer = setTimeout(() => {
       setLoadingData(false);
     }, 3000);
-    return () => clearTimeout(time);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   /**
@@ -47,9 +53,9 @@ const SearchTitles = () => {
   /**
    * Fetches and loads all properties from the blockchain.
    */
-  async function loadAllProperties() {
+  async function loadAllProperties(): Promise<void> {
     const provider = new ethers.providers.JsonRpcProvider(
-      "https://sepolia.infura.io/v3/184b35311791483b991c8951bb07c56c"
+      `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_PROJECT_ID}`
     );
 
     // create contract's instance
@@ -64,7 +70,7 @@ const SearchTitles = () => {
     console.log("fetch market Items", data);
 
     const items = await Promise.all(
-      data.map(async (i) => {
+      data.map(async (i: any): Promise<Property> => {
         // get NFT URI to fetch the metadata
         const tokenUri = await marketContract.tokenURI(i.tokenId);
 
@@ -102,10 +108,10 @@ const SearchTitles = () => {
   /**
    * Fetches and loads properties filtered by instrument number from the blockchain.
    */
-  async function loadFilteredProperties() {
+  async function loadFilteredProperties(): Promise<void> {
     try {
       const provider = new ethers.providers.JsonRpcProvider(
-        "https://sepolia.infura.io/v3/184b35311791483b991c8951bb07c56c"
+        `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_PROJECT_ID}`
       );
 
       // create an instance of smart contracts
@@ -115,24 +121,25 @@ const SearchTitles = () => {
         provider
       );
 
-      console.log("from state", instrumentNum);
+      if (instrumentNum == "") {
+        showAlert(true, "", "error");
+        return;
+      }
+
       // convert parse the InstrumentNumber to value that can be read on the blockchain.
       const instrumentNumber = ethers.utils.parseUnits(instrumentNum, 0);
 
-      console.log("after parsing", instrumentNum);
-
       /* Returns the filtered data based on the instrumentNumber set in the search */
       const data = await marketContract.fetchPropertiesByNum(instrumentNumber);
-      console.log("datatatata", data);
 
       if (data.length == 0) {
         setSearchFailed(true);
-        showError();
+        showAlert(true, "", "error");
       } else {
         setSearchFailed(false);
 
         const items = await Promise.all(
-          data.map(async (i) => {
+          data.map(async (i: any): Promise<Property> => {
             // get NFT URI to fetch the metadata
             const tokenUri = await marketContract.tokenURI(i.tokenId);
 
@@ -175,23 +182,24 @@ const SearchTitles = () => {
 
   /**
    * Updates search enablement based on selected location.
-   * @param {Object} event - The event object from the select input.
+   * @param {Object} e - The event object from the select input.
    */
-  function handleSelectedLocation(event) {
-    const selectedLocation = event.target.value;
+  function handleSelectedLocation(e: React.ChangeEvent<HTMLSelectElement>) {
+    const selectedLocation = e.target.value;
     setIsSearchEnabled(selectedLocation !== "All");
   }
 
-  const displayProperties = searchClicked ? filteredProperties : properties;
+  const displayProperties: Property[] = searchClicked
+    ? filteredProperties
+    : properties;
 
   /**
    * Checks if data is loaded but no properties exist, then displays a no properties message.
    */
-  if (loadingState == "loaded" && !properties.length)
+  if (loadingState == "loaded" && properties.length === 0)
     return (
       <h1 className="loader-container">No property have been recorded yet!</h1>
     );
-
   return (
     <section className="blog-grid section-padding position-re">
       <div className="container">
@@ -208,7 +216,10 @@ const SearchTitles = () => {
         <div className="row">
           <div className="col-lg-12">
             <div className="form-wrapper">
-              <form onSubmit={(e) => e.preventDefault()}>
+              <form
+                onSubmit={(e: React.ChangeEvent<HTMLFormElement>) =>
+                  e.preventDefault()
+                }>
                 <div className="form-group d-flex align-items-center">
                   <label htmlFor="state" className="mr-2">
                     Search Property:
@@ -218,7 +229,9 @@ const SearchTitles = () => {
                       id="state"
                       name="selected value"
                       className="form-control"
-                      onChange={(e) => handleSelectedLocation(e)}>
+                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                        handleSelectedLocation(e)
+                      }>
                       <option value="All">All properties</option>
                       <option value="InstrumentNum">
                         By instrument number
@@ -235,7 +248,11 @@ const SearchTitles = () => {
           <div className="col-lg-12">
             <div className="form-wrapper">
               {isSearchEnabled && (
-                <form className="my-form" onSubmit={(e) => e.preventDefault()}>
+                <form
+                  className="my-form"
+                  onSubmit={(e: React.ChangeEvent<HTMLFormElement>) =>
+                    e.preventDefault()
+                  }>
                   <div className="form-group d-flex align-items-center">
                     <button
                       className="mr-2 nb searchBtn light"
@@ -250,26 +267,26 @@ const SearchTitles = () => {
                         className="input_instrumentNumber"
                         name="user_instrumentNumber"
                         placeholder="Asset Instrument Number"
-                        required="required"
-                        onChange={(e) => setInstrumentNum(e.target.value)}
+                        required={true}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setInstrumentNum(e.target.value)
+                        }
                       />
                     </div>
                   </div>
-                  <>
-                    {searchFailed && (
-                      <div>
-                        {alert.show && alert.type === "error" && (
-                          <div
-                            className="alert alert-warning"
-                            role="alert"
-                            style={{ textAlign: "center" }}>
-                            Invalid input - No results found for the given
-                            instrument number.
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
+                  {searchFailed && (
+                    <div>
+                      {alert.show && alert.type === "error" && (
+                        <div
+                          className="alert alert-warning"
+                          role="alert"
+                          style={{ textAlign: "center" }}>
+                          Invalid input - No results found for the given
+                          instrument number.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </form>
               )}
             </div>

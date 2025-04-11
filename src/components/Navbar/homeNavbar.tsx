@@ -3,11 +3,11 @@ import React from "react";
 import Link from "next/link";
 import appData from "../../data/app.json";
 import { handleMobileDropdown } from "../../common/navbar";
+import { NavbarProps } from "../../models/themes";
 
-const HomeNavbar = ({ lr, nr, theme }) => {
+const HomeNavbar: React.FC<NavbarProps> = ({ theme }) => {
   return (
     <nav
-      ref={nr}
       className={`navbar navbar-expand-lg change ${
         theme === "themeL" ? "light" : ""
       }`}>
@@ -16,12 +16,12 @@ const HomeNavbar = ({ lr, nr, theme }) => {
           <span></span>
           {theme ? (
             theme === "themeL" ? (
-              <img ref={lr} src={appData.darkLogo} alt="logo" />
+              <img src={appData.darkLogo} alt="logo" />
             ) : (
-              <img ref={lr} src={appData.lightLogo} alt="logo" />
+              <img src={appData.lightLogo} alt="logo" />
             )
           ) : (
-            <img ref={lr} src={appData.lightLogo} alt="logo" />
+            <img src={appData.lightLogo} alt="logo" />
           )}
         </Link>
 

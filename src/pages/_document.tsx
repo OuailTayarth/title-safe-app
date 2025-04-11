@@ -1,14 +1,23 @@
-import Document, { Html, Head, Main, NextScript } from "next/document";
+import Document, {
+  Html,
+  Head,
+  Main,
+  NextScript,
+  DocumentContext,
+  DocumentInitialProps,
+} from "next/document";
 
 class MyDocument extends Document {
-  static async getInitialProps(ctx) {
+  static async getInitialProps(
+    ctx: DocumentContext
+  ): Promise<DocumentInitialProps> {
     const initialProps = await Document.getInitialProps(ctx);
     return {
       ...initialProps,
     };
   }
 
-  render() {
+  render(): JSX.Element {
     return (
       <Html lang="en">
         <Head>
@@ -16,7 +25,6 @@ class MyDocument extends Document {
           <meta name="keywords" content="property Title Record" />
           <meta name="description" content="Property Title Record" />
           <meta name="author" content=" Ouail Tayarth" />
-          {/* <link rel="shortcut icon" href="/img/favicon.ico" /> */}
           <link
             href="https://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,700,800,900&display=swap"
             rel="stylesheet"

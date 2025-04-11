@@ -22,18 +22,26 @@ import { s3 } from "../../config/awsConfig.js";
 // Custom hooks
 import useAlert from "../useAlert";
 
-const RecordTitles = () => {
-  const dispatch = useDispatch();
-  const formRef = useRef(null);
-  const blockchain = useSelector((state) => state.blockchain);
-  const [activeTransaction, setActiveTransaction] = useState(false);
-  const [selectedDocuments, setSelectedDocuments] = useState({});
-  const [alert, showAlert, showError] = useAlert(10000);
-  const [propertyData, updatePropertyData] = useState({
+import { BlockchainStates } from "../../models/blockchainStates";
+import { RootState, AppDispatch } from "../../redux/store";
+import { PropertyData } from "../../models/property";
+
+const RecordTitles = (): JSX.Element => {
+  const formRef = useRef<HTMLFormElement>(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const blockchain = useSelector<RootState, BlockchainStates>(
+    (state) => state.blockchain
+  );
+  const [activeTransaction, setActiveTransaction] = useState<boolean>(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<
+    Record<string, string>
+  >({});
+  const [alert, showAlert] = useAlert(10000);
+  const [propertyData, updatePropertyData] = useState<PropertyData>({
     name: "",
     propertyAddress: "",
     deedNumber: "",
-    instrumentNumber: "",
+    instrumentNum: "",
     saleDate: "",
     salePrice: "",
     zoning: "",
@@ -43,17 +51,18 @@ const RecordTitles = () => {
     state: "",
     county: "",
     documents: {},
+    documentType: "",
   });
 
   // Document labels type
-  const documentLabels = {
+  const documentLabels: Record<string, string> = {
     deed: "Deed Document(s)",
     conveyance: "Conveyance Document(s)",
     title: "Title Document(s)",
   };
 
   // State counties mapping
-  const stateCounties = {
+  const stateCounties: Record<string, string[]> = {
     arizona: ["Maricopa", "Yavapai", "Coconino"],
     newyork: ["Kings", "Queens", "New York", "Bronx", "Richmond"],
     california: [
@@ -70,7 +79,7 @@ const RecordTitles = () => {
    */
   useEffect(() => {
     if (blockchain.account !== "" && blockchain.smartContract !== null) {
-      dispatch(fetchData(blockchain.account));
+      dispatch(fetchData());
     }
   }, [blockchain.smartContract, dispatch]);
 
@@ -95,7 +104,10 @@ const RecordTitles = () => {
    * @param {string} urlToDelete - The URL of the document to delete.
    * @param {string} documentType - The type of document being deleted.
    */
-  const handleDeleteUrl = async (urlToDelete, documentType) => {
+  const handleDeleteUrl = async (
+    urlToDelete: string,
+    documentType: string
+  ): Promise<void> => {
     try {
       const url = new URL(urlToDelete);
 
@@ -147,11 +159,11 @@ const RecordTitles = () => {
    * @param {Object} e - The event object from the file input.
    * @param {string} documentType - The type of document being uploaded.
    */
-  async function handleFileChange(e, documentType) {
-    // const file = e.target.files[0]
-    const files = Array.from(e.target.files);
-    console.log("target files from e", e.target.files);
-    console.log("files", files);
+  async function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+    documentType: string
+  ): Promise<void> {
+    const files = e.target.files ? Array.from(e.target.files) : [];
 
     try {
       // upload files to S3
@@ -169,8 +181,6 @@ const RecordTitles = () => {
         return uploadResult.Location;
       });
 
-      console.log("fileUpload", fileUploadPromises);
-
       const uploadNewFilesUrls = await Promise.all(fileUploadPromises);
 
       // Update the propertyData state allowing multiple files per document type
@@ -184,8 +194,6 @@ const RecordTitles = () => {
           ],
         },
       }));
-
-      console.log("File Urls", uploadNewFilesUrls);
     } catch (e) {
       console.log(e);
     }
@@ -194,11 +202,11 @@ const RecordTitles = () => {
   /**
    * Records property metadata in S3 by uploading a JSON file.
    */
-  async function recordPropertyInS3() {
+  async function recordPropertyInS3(): Promise<void> {
     const {
       name,
       propertyAddress,
-      instrumentNumber,
+      instrumentNum,
       deedNumber,
       saleDate,
       salePrice,
@@ -214,7 +222,7 @@ const RecordTitles = () => {
     if (
       !name ||
       !propertyAddress ||
-      !instrumentNumber ||
+      !instrumentNum ||
       !deedNumber ||
       !saleDate ||
       !salePrice ||
@@ -234,7 +242,7 @@ const RecordTitles = () => {
         name,
         propertyAddress,
         deedNumber,
-        instrumentNumber,
+        instrumentNum,
         saleDate,
         salePrice,
         zoning,
@@ -251,8 +259,6 @@ const RecordTitles = () => {
       // Convert data to a string
       const jsonData = JSON.stringify(data);
 
-      console.log("data after stringify it", jsonData);
-
       const metadataFilename = `${propertyData.name}_metadata.json`;
 
       // Create parameters for S3 upload
@@ -265,11 +271,9 @@ const RecordTitles = () => {
 
       // Upload data to S3
       const uploadedData = await s3.upload(params).promise();
-      console.log("Uploaded data:", uploadedData);
 
       // Get the URL of the uploaded data
       const url = uploadedData.Location;
-      console.log("URL:", url);
 
       // Pass the URL to the function to record property metadata on the blockchain
       recordPropertyOnChain(url);
@@ -282,7 +286,7 @@ const RecordTitles = () => {
    * Records a property on the blockchain using the provided metadata URL.
    * @param {string} url - The URL of the metadata to record on-chain.
    */
-  async function recordPropertyOnChain(url) {
+  async function recordPropertyOnChain(url: string): Promise<void> {
     const web3Modal = new Web3Modal();
     const connection = await web3Modal.connect();
     const provider = new ethers.providers.Web3Provider(connection);
@@ -295,8 +299,7 @@ const RecordTitles = () => {
       signer
     );
     console.log("contract instance", contract);
-    let instrumentNum = propertyData.instrumentNumber.toString();
-    console.log(instrumentNum);
+    let instrumentNum = propertyData.instrumentNum.toString();
     showAlert(
       true,
       "Your property title recording is being processed. Please wait..."
@@ -306,8 +309,6 @@ const RecordTitles = () => {
     try {
       const transaction = await contract.createProperty(url, instrumentNum);
       await transaction.wait();
-      console.log("transaction confirmed");
-
       showAlert(
         true,
         "Your property title recording has been processed. Awaiting for the Recorder's office approval."
@@ -329,7 +330,7 @@ const RecordTitles = () => {
    */
   async function recordOnSubmit() {
     await recordPropertyInS3();
-    formRef.current.reset();
+    if (formRef.current) formRef.current.reset();
   }
 
   /**
@@ -337,7 +338,10 @@ const RecordTitles = () => {
    * @param {Object} e - The event object from the input.
    * @param {string} documentType - The type of document being selected.
    */
-  const handleDocumentsState = (e, documentType) => {
+  const handleDocumentsState = (
+    e: React.ChangeEvent<HTMLSelectElement>,
+    documentType: string
+  ): void => {
     const stateValue = e.target.value;
     setSelectedDocuments((prevStates) => ({
       ...prevStates,
@@ -383,7 +387,7 @@ const RecordTitles = () => {
                           name="user_name"
                           placeholder="Owner Name"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               name: e.target.value,
@@ -401,7 +405,7 @@ const RecordTitles = () => {
                           name="form_propertyAddress"
                           placeholder="Property Address"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               propertyAddress: e.target.value,
@@ -419,7 +423,7 @@ const RecordTitles = () => {
                           name="user_deedNumber"
                           placeholder="Asset Deed Number"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               deedNumber: e.target.value,
@@ -437,10 +441,10 @@ const RecordTitles = () => {
                           name="user_instrumentNumber"
                           placeholder="Asset Instrument Number"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
-                              instrumentNumber: e.target.value,
+                              instrumentNum: e.target.value,
                             })
                           }
                         />
@@ -455,7 +459,7 @@ const RecordTitles = () => {
                           name="user_saleDate"
                           placeholder="Sale Date"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               saleDate: e.target.value,
@@ -473,7 +477,7 @@ const RecordTitles = () => {
                           name="user_salePrice"
                           placeholder="Sale Price"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               salePrice: e.target.value,
@@ -491,7 +495,7 @@ const RecordTitles = () => {
                           name="user_Zoning"
                           placeholder="Zoning"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               zoning: e.target.value,
@@ -509,7 +513,7 @@ const RecordTitles = () => {
                           name="user_Subdivision"
                           placeholder="Subdivision"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               subdivision: e.target.value,
@@ -527,7 +531,7 @@ const RecordTitles = () => {
                           name="user_form_constructionYear"
                           placeholder="Construction Year"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               constructionYear: e.target.value,
@@ -545,7 +549,7 @@ const RecordTitles = () => {
                           name="user_livingSpace"
                           placeholder="Living Space (sq ft)"
                           required
-                          onChange={(e) =>
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                             updatePropertyData({
                               ...propertyData,
                               livingSpace: e.target.value,
@@ -559,7 +563,9 @@ const RecordTitles = () => {
                       <div className="form-group">
                         <select
                           name="states"
-                          onChange={(e) => {
+                          onChange={(
+                            e: React.ChangeEvent<HTMLSelectElement>
+                          ) => {
                             updatePropertyData({
                               ...propertyData,
                               state: e.target.value,
@@ -579,7 +585,9 @@ const RecordTitles = () => {
                         <div className="form-group">
                           <select
                             name="counties"
-                            onChange={(e) => {
+                            onChange={(
+                              e: React.ChangeEvent<HTMLSelectElement>
+                            ) => {
                               updatePropertyData({
                                 ...propertyData,
                                 county: e.target.value,
@@ -604,7 +612,9 @@ const RecordTitles = () => {
                       <div className="form-group">
                         <select
                           name="documentType"
-                          onChange={(e) => {
+                          onChange={(
+                            e: React.ChangeEvent<HTMLSelectElement>
+                          ) => {
                             const documentType = e.target.value;
                             handleDocumentsState(e, documentType);
                             updatePropertyData({
@@ -641,9 +651,9 @@ const RecordTitles = () => {
                                   type="file"
                                   id="document"
                                   name="document"
-                                  onChange={(e) =>
-                                    handleFileChange(e, documentType)
-                                  }
+                                  onChange={(
+                                    e: React.ChangeEvent<HTMLInputElement>
+                                  ) => handleFileChange(e, documentType)}
                                   className="my-4"
                                   accept=".pdf,.doc,.docx"
                                   multiple

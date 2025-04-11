@@ -1,8 +1,12 @@
 /* eslint-disable @next/next/no-css-tags */
 import React from "react";
 import Head from "next/head";
+import { LightThemeProps } from "../models/themes";
 
-const LightTheme = ({ children, mobileappstyle }) => {
+const LightTheme: React.FC<LightThemeProps> = ({
+  children,
+  mobileappstyle = false,
+}) => {
   React.useEffect(() => {
     window.theme = "light";
   }, []);

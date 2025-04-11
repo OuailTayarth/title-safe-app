@@ -3,7 +3,6 @@ import Web3 from "web3";
 // log
 import { fetchData } from "../data/dataActions";
 import propertyInterface from "../../../artifacts/contracts/PropertyRecorder.sol/PropertyRecorder.json";
-// import propertyInterface from "../../../public/config/abi.json";
 
 const connectRequest = () => {
   return {

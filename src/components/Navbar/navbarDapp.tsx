@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import React from "react";
 import Link from "next/link";
 import appData from "../../data/app.json";
@@ -6,21 +5,25 @@ import { handleMobileDropdown } from "../../common/navbar";
 import { useDispatch, useSelector } from "react-redux";
 import { connect } from "../../redux/blockchain/blockchainActions";
 import { fetchData } from "../../redux/data/dataActions";
+import { NavbarProps } from "../../models/themes";
+import { AppDispatch, RootState } from "../../redux/store";
+import { BlockchainStates } from "../../models/blockchainStates";
 
-const Navbar = ({ lr, nr, theme }) => {
-  const dispatch = useDispatch();
-  const blockchain = useSelector((state) => state.blockchain);
+const Navbar: React.FC<NavbarProps> = ({ theme }) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const blockchain = useSelector<RootState, BlockchainStates>(
+    (state) => state.blockchain
+  );
 
   // Fetch the accounts Redux/blockchain
   const getData = () => {
     if (blockchain.account !== "" && blockchain.smartContract !== null) {
-      dispatch(fetchData(blockchain.account));
+      dispatch(fetchData());
     }
   };
 
   return (
     <nav
-      ref={nr} // to be remove and tested
       className={`navbar navbar-expand-lg change ${
         theme === "themeL" ? "light" : ""
       }`}>
@@ -29,12 +32,12 @@ const Navbar = ({ lr, nr, theme }) => {
           <span></span>
           {theme ? (
             theme === "themeL" ? (
-              <img ref={lr} src={appData.darkLogo} alt="logo" />
+              <img src={appData.darkLogo} alt="logo" />
             ) : (
-              <img ref={lr} src={appData.lightLogo} alt="logo" />
+              <img src={appData.lightLogo} alt="logo" />
             )
           ) : (
-            <img ref={lr} src={appData.lightLogo} alt="logo" />
+            <img src={appData.lightLogo} alt="logo" />
           )}
         </Link>
 
@@ -86,9 +89,9 @@ const Navbar = ({ lr, nr, theme }) => {
           </ul>
 
           <button
-            className="butn bord "
+            className="butn bord"
             id="connect-button"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.preventDefault();
               dispatch(connect());
               getData();
@@ -96,7 +99,7 @@ const Navbar = ({ lr, nr, theme }) => {
             {blockchain.walletConnected === false ? (
               "Connect Wallet"
             ) : (
-              <div id="address">{blockchain.account.substring(0, 12)}...</div>
+              <div id="address">{blockchain.account!.substring(0, 12)}...</div>
             )}
           </button>
         </div>

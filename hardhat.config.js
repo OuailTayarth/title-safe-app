@@ -7,8 +7,6 @@ const fs = require("fs");
 // get the private key from the secret file
 const privateKey = fs.readFileSync(".secret").toString().trim();
 
-const projectId = "184b35311791483b991c8951bb07c56c";
-
 module.exports = {
   defaultNetwork: "sepolia",
 
@@ -19,12 +17,12 @@ module.exports = {
 
     // connect hardhat with infura endpoint
     sepolia: {
-      url: `https://sepolia.infura.io/v3/${projectId}`,
+      url: `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_PROJECT_ID}`,
       accounts: [privateKey],
     },
 
     mainnet: {
-      url: `https://mainnet.infura.io/v3/${projectId}`,
+      url: `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_PROJECT_ID}`,
       accounts: [privateKey],
     },
   },

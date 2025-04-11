@@ -29,35 +29,53 @@ import { s3 } from "../../config/awsConfig.js";
 import useAlert from "../useAlert";
 import { CopperLoading } from "respinner";
 
-const RecorderOfficeTitles = () => {
-  const [myPropertiesTitles, setMyPropertiesTitles] = useState([]);
-  const [loadingState, setLoadingState] = useState("not-loaded");
-  const [propertyToUpdate, setPropertyToUpdate] = useState(null);
-  const [selectedDocumentType, setSelectedDocumentType] = useState("");
-  const [alert, showAlert, showError] = useAlert(10000);
-  const [activeTransactions, setActiveTransactions] = useState({});
-  const [activeTransaction, setActiveTransaction] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
-  const [isManager, setIsManager] = useState(false);
+import { Property, PropertyMetaData } from "../../models/property";
+import { ActiveTransactions } from "../../models/activeTransactions";
+import { BlockchainStates } from "../../models/blockchainStates";
+import { RootState } from "../../redux/store";
 
-  const [propertyMetadata, updatedPropertyMetadata] = useState({
+const RecorderOfficeTitles = (): JSX.Element => {
+  const [myPropertiesTitles, setMyPropertiesTitles] = useState<
+    Property[] | null
+  >([]);
+  const [loadingState, setLoadingState] = useState<"not-loaded" | "loaded">(
+    "not-loaded"
+  );
+  const [propertyToUpdate, setPropertyToUpdate] = useState<Property | null>(
+    null
+  );
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>("");
+  const [alert, showAlert] = useAlert(10000);
+  const [activeTransactions, setActiveTransactions] =
+    useState<ActiveTransactions>({});
+  const [activeTransaction, setActiveTransaction] = useState<boolean>(false);
+  const [loadingData, setLoadingData] = useState<boolean>(true);
+  const [isManager, setIsManager] = useState<boolean>(false);
+
+  const [propertyMetadata, setPropertyMetadata] = useState<PropertyMetaData>({
     documents: {},
   });
 
-  const blockchain = useSelector((state) => state.blockchain);
+  const blockchain = useSelector<RootState, BlockchainStates>(
+    (state) => state.blockchain
+  );
 
-  const [isAddDocumentModalOpen, setIsAddDocumentModalOpen] = useState(false);
+  const [isAddDocumentModalOpen, setIsAddDocumentModalOpen] =
+    useState<boolean>(false);
   const [isEditInformationModalOpen, setIsEditInformationModalOpen] =
-    useState(false);
+    useState<boolean>(false);
 
   /**
    * Delays setting the loading state to false after 3 seconds and clears the timeout on cleanup.
    */
   useEffect(() => {
-    const time = setTimeout(() => {
+    let timer: NodeJS.Timeout | undefined;
+    timer = setTimeout(() => {
       setLoadingData(false);
     }, 3000);
-    return () => clearTimeout(time);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   /**
@@ -72,9 +90,9 @@ const RecorderOfficeTitles = () => {
    * Opens the add document modal and sets the property to update.
    * @param {Object} property - The property to be updated.
    */
-  function openAddDocumentModal(property) {
+  function openAddDocumentModal(property: Property) {
     setPropertyToUpdate(property);
-    updatedPropertyMetadata(property);
+    setPropertyMetadata(property);
     setIsAddDocumentModalOpen(true);
   }
 
@@ -82,17 +100,21 @@ const RecorderOfficeTitles = () => {
    * Updates the property to update state with new input values.
    * @param {Object} e - The event object from the input change.
    */
-  const handleChange = (e) => {
-    setPropertyToUpdate({
-      ...propertyToUpdate,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ): void => {
+    if (propertyToUpdate) {
+      setPropertyToUpdate({
+        ...propertyToUpdate,
+        [e.target.name as keyof Property]: e.target.value,
+      });
+    }
   };
 
   /**
    * Submits updated property metadata to S3 and updates the state.
    */
-  const handleSubmit = async () => {
+  const handleSubmit = async (): Promise<void> => {
     // Get the tokens URL of the metadata of the current tokenID
     const web3Modal = new Web3Modal();
     const connection = await web3Modal.connect();
@@ -106,7 +128,7 @@ const RecorderOfficeTitles = () => {
 
     // We add the newMetaDataUri +  the propertyToUpdate tokenID selected from clicking on Add Additional Documents
     let propertyTokenURI = await marketContract.tokenURI(
-      propertyToUpdate.tokenId
+      propertyToUpdate!.tokenId
     );
 
     try {
@@ -125,7 +147,8 @@ const RecorderOfficeTitles = () => {
       };
 
       const existingData = await s3.getObject(getParams).promise();
-      const existingProperty = JSON.parse(existingData.Body.toString());
+      const body = existingData.Body as Buffer;
+      const existingProperty = JSON.parse(body.toString());
 
       // Update the property information with the modified data
       const updatedProperty = {
@@ -148,8 +171,8 @@ const RecorderOfficeTitles = () => {
 
       // Update the myPropertiesTitles state with the updated property information
       setMyPropertiesTitles((prevTitles) =>
-        prevTitles.map((title) =>
-          title.tokenId === propertyToUpdate.tokenId ? updatedProperty : title
+        prevTitles!.map((title) =>
+          title.tokenId === propertyToUpdate!.tokenId ? updatedProperty : title
         )
       );
 
@@ -164,7 +187,7 @@ const RecorderOfficeTitles = () => {
    */
   function handleAddDocumentModalClose() {
     setPropertyToUpdate(null);
-    setSelectedDocumentType(null);
+    setSelectedDocumentType("");
     setIsAddDocumentModalOpen(false);
   }
 
@@ -180,17 +203,20 @@ const RecorderOfficeTitles = () => {
    * Opens the edit information modal and sets the property to update.
    * @param {Object} property - The property to be edited.
    */
-  function openEditInformationModal(property) {
+  function openEditInformationModal(property: Property) {
     setPropertyToUpdate(property);
     setIsEditInformationModalOpen(true);
   }
 
   /**
    * Updates the metadata URI for a property on the blockchain.
-   * @param {number} tokenId - The token ID of the property to update.
+   * @param {string} tokenId - The token ID of the property to update.
    * @param {string} newMetadataUri - The new metadata URI to set.
    */
-  async function updatePropertyMetadata(tokenId, newMetadataUri) {
+  async function updatePropertyMetadata(
+    tokenId: string,
+    newMetadataUri: string
+  ): Promise<void> {
     const web3Modal = new Web3Modal();
     const connection = await web3Modal.connect();
     const provider = new ethers.providers.Web3Provider(connection);
@@ -212,7 +238,7 @@ const RecorderOfficeTitles = () => {
 
       showAlert(true, "Document(s) uploaded successfully!");
       setActiveTransactions((prev) => ({ ...prev, [tokenId]: false }));
-    } catch (err) {
+    } catch {
       setActiveTransactions((prev) => ({ ...prev, [tokenId]: false }));
       showAlert(true, "Upload failed. Try again later or contact support.");
     }
@@ -223,11 +249,12 @@ const RecorderOfficeTitles = () => {
    * @param {string} urlToDelete - The URL of the document to delete.
    * @param {string} documentType - The type of document being deleted.
    */
-  const handleDeleteUrl = async (urlToDelete, documentType) => {
+  const handleDeleteUrl = async (
+    urlToDelete: string,
+    documentType: string
+  ): Promise<void> => {
     try {
       const url = new URL(urlToDelete);
-
-      console.log("Url from URL", url);
 
       // Extract the bucket name and encoded key from the URL
       const bucketName = url.hostname.split(".")[0];
@@ -248,7 +275,7 @@ const RecorderOfficeTitles = () => {
     } catch (error) {
       console.error("Error deleting object from S3:", error);
     }
-    updatedPropertyMetadata((prevData) => ({
+    setPropertyMetadata((prevData) => ({
       ...prevData,
       documents: {
         ...prevData.documents,
@@ -266,9 +293,11 @@ const RecorderOfficeTitles = () => {
    * @param {Object} e - The event object from the file input.
    * @param {string} selectedDocumentType - The type of document being uploaded.
    */
-  async function handleFileChange(e, selectedDocumentType) {
-    const files = Array.from(e.target.files);
-
+  async function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+    selectedDocumentType: string
+  ): Promise<void> {
+    const files = e.target.files ? Array.from(e.target.files) : [];
     try {
       // upload files to S3
       const fileUploadPromises = files.map(async (file) => {
@@ -285,11 +314,9 @@ const RecorderOfficeTitles = () => {
         return uploadResult.Location;
       });
 
-      console.log("fileUpload", fileUploadPromises);
-
       const uploadFileUrls = await Promise.all(fileUploadPromises);
 
-      updatedPropertyMetadata((prevData) => {
+      setPropertyMetadata((prevData) => {
         return {
           ...prevData,
           documents: {
@@ -312,7 +339,7 @@ const RecorderOfficeTitles = () => {
   /**
    * Saves updated property metadata with new documents to S3 and the blockchain.
    */
-  async function handleAddDocumentModalSave() {
+  async function handleAddDocumentModalSave(): Promise<void> {
     if (!selectedDocumentType) {
       return showAlert(true, "Please select a Document Type(e.g, Deed)");
     } else if (
@@ -320,6 +347,10 @@ const RecorderOfficeTitles = () => {
       propertyMetadata.documents[selectedDocumentType].length === 0
     ) {
       return showAlert(true, "Please upload a document");
+    }
+    if (!propertyToUpdate || !myPropertiesTitles) {
+      console.error("Property to update is null");
+      return;
     }
 
     setActiveTransaction(true);
@@ -359,7 +390,8 @@ const RecorderOfficeTitles = () => {
       };
 
       const existingData = await s3.getObject(getParams).promise();
-      const existingMetadata = JSON.parse(existingData.Body.toString());
+      const body = existingData.Body as Buffer;
+      const existingMetadata = JSON.parse(body.toString());
 
       // Update the existing metadata with the new document information
       existingMetadata.documents = {
@@ -369,8 +401,6 @@ const RecorderOfficeTitles = () => {
 
       // Convert the updated metadata to a string
       const updatedMetadata = JSON.stringify(existingMetadata);
-
-      console.log("updatedMetadata", updatedMetadata);
 
       const putParams = {
         Bucket: bucketName,
@@ -402,9 +432,9 @@ const RecorderOfficeTitles = () => {
 
   /**
    * Approves a property status on the blockchain and updates S3 metadata.
-   * @param {number} tokenId - The token ID of the property to approve.
+   * @param {string} tokenId - The token ID of the property to approve.
    */
-  async function approvePropertyStatus(tokenId) {
+  async function approvePropertyStatus(tokenId: string): Promise<void> {
     setActiveTransactions((prev) => ({ ...prev, [tokenId]: true }));
     showAlert(true, "Property approval is in progress. Please wait...");
 
@@ -430,16 +460,12 @@ const RecorderOfficeTitles = () => {
       // Change status of the property on Amazon S3 bucket targeted by key
       const url = new URL(propertyTokenURI);
 
-      console.log("Url from URL", url);
-
       // Extract the bucket name and encoded key from the URL
       const bucketName = url.hostname.split(".")[0];
       let encodedKey = url.pathname.slice(1);
 
       // Remove any '+' or '%20' from the encoded key
       encodedKey = encodedKey.replace(/\+|%20/g, " ");
-
-      console.log("encodedKey", encodedKey);
 
       // Get the existing JSON file from Amazon S3
       const getParams = {
@@ -448,10 +474,8 @@ const RecorderOfficeTitles = () => {
       };
 
       const existingData = await s3.getObject(getParams).promise();
-      const existingMetadata = JSON.parse(existingData.Body.toString());
-
-      console.log("existingData", existingData);
-      console.log("existingMetadata ", existingMetadata);
+      const body = existingData.Body as Buffer;
+      const existingMetadata = JSON.parse(body.toString());
 
       // Update the status field in the existing metadata
       existingMetadata.status = "Approved";
@@ -471,26 +495,27 @@ const RecorderOfficeTitles = () => {
       await s3.putObject(putParams).promise();
 
       // Updating the property status in the state
-      const updatedProperties = myPropertiesTitles.map((property) =>
+      const updatedProperties = myPropertiesTitles!.map((property) =>
         property.tokenId === tokenId
           ? { ...property, status: "Approved" }
           : property
       );
       setMyPropertiesTitles(updatedProperties);
       showAlert(true, "Property has been approved successfully!");
-    } catch (err) {
+    } catch {
       showAlert(
         true,
         "Transaction failed: There was an error while processing your request. Please try again later or contact support for assistance."
       );
+    } finally {
+      setActiveTransactions((prev) => ({ ...prev, [tokenId]: false }));
     }
-    setActiveTransactions((prev) => ({ ...prev, [tokenId]: false }));
   }
 
   /**
    * Checks if the connected user is a manager.
    */
-  async function IsUserManager() {
+  async function IsUserManager(): Promise<void> {
     const web3Modal = new Web3Modal({
       network: "mainnet",
       cacheProvider: true,
@@ -505,16 +530,18 @@ const RecorderOfficeTitles = () => {
       signer
     );
     if (blockchain.walletConnected) {
-      const data = await marketContract.isManager(blockchain.account);
+      const data: boolean = await marketContract.isManager(blockchain.account);
       setIsManager(data);
+    } else {
+      showAlert(true, "Please connect your wallet to check manager status");
     }
   }
 
   /**
    * Loads all property titles for a manager from the blockchain.
    */
-  async function LoadMyPropertiesTitles() {
-    IsUserManager();
+  async function LoadMyPropertiesTitles(): Promise<void> {
+    await IsUserManager();
 
     const web3Modal = new Web3Modal({
       network: "mainnet",
@@ -534,18 +561,14 @@ const RecorderOfficeTitles = () => {
     if (isManager) {
       /* Returns all unsold market items (array of arrays) */
       const data = await marketContract.fetchAllPropertiesByManagers();
-      console.log("fetch Property By Managers", data);
 
       const items = await Promise.all(
-        data.map(async (i) => {
+        data.map(async (i: any): Promise<Property> => {
           // get NFT URI to fetch the metadata
           const tokenUri = await marketContract.tokenURI(i.tokenId);
-          console.log("Token Id", tokenUri);
 
           //fetch the meta data from the URI
           const meta = await axios.get(tokenUri);
-          console.log("metaaa", meta);
-          console.log(typeof i.instrumentNumber.toNumber());
 
           let item = {
             tokenId: i.tokenId.toNumber(),
@@ -571,7 +594,6 @@ const RecorderOfficeTitles = () => {
         })
       );
 
-      console.log("NFTs Array Object", items);
       setMyPropertiesTitles(items);
       setLoadingState("loaded");
     }
@@ -600,7 +622,10 @@ const RecorderOfficeTitles = () => {
   /**
    * Checks if data is loaded but no properties exist, then displays a no properties message.
    */
-  if (loadingState == "loaded" && !myPropertiesTitles.length)
+  if (
+    loadingState == "loaded" &&
+    (!myPropertiesTitles || myPropertiesTitles.length === 0)
+  )
     return (
       <h1 className="loader-container">
         No properties have been recorded yet!
@@ -628,7 +653,7 @@ const RecorderOfficeTitles = () => {
           ) : (
             isManager && (
               <div className="row">
-                {myPropertiesTitles.map((item, index) => (
+                {myPropertiesTitles!.map((item, index) => (
                   <div
                     className="col-lg-4 wow fadeInUp"
                     data-wow-delay=".3s"
@@ -788,13 +813,14 @@ const RecorderOfficeTitles = () => {
                 id="document-type"
                 className="form-control"
                 value={selectedDocumentType}
-                onChange={(e) => setSelectedDocumentType(e.target.value)}>
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setSelectedDocumentType(e.target.value)
+                }>
                 <option value="">Select a document type</option>
                 <option value="deed">Deed</option>
                 <option value="conveyance">Conveyance</option>
                 <option value="title">Title</option>
                 <option value="otherDocuments">Other Document(s)</option>
-                {/* can add other document types as necessary */}
               </select>
             </div>
             <div className="form-group">
@@ -847,7 +873,7 @@ const RecorderOfficeTitles = () => {
         <Modal.Footer>
           <Button
             variant="secondary"
-            disabled={activeTransaction ? 1 : 0}
+            disabled={activeTransaction}
             onClick={handleAddDocumentModalClose}>
             Close
           </Button>
@@ -1047,7 +1073,7 @@ const RecorderOfficeTitles = () => {
         <Modal.Footer>
           <Button
             variant="secondary"
-            disabled={activeTransaction ? 1 : 0}
+            disabled={activeTransaction}
             onClick={handleEditInformationModalClose}>
             Close
           </Button>

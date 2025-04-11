@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const Landing = () => {
+const Landing = (): JSX.Element => {
   return (
     <header className="slider-stwo valign position-re">
       <div className="container">
@@ -8,7 +8,7 @@ const Landing = () => {
           <div className="col-lg-6 valign">
             <div className="caption">
               <h1 className="mb-10" id="titleh1">
-                Record Your Home Title SMARTER
+                Record your home title SMARTER
               </h1>
               <p>
                 Experience the transformative power of blockchain technology in

@@ -1,12 +1,13 @@
 import React from "react";
 import Head from "next/head";
 import Script from "next/script";
+import { AppProps } from "next/app";
 import Cursor from "../components/cursor";
 import { Provider } from "react-redux";
 import store from "../redux/store";
 import "../styles/main.scss";
 
-function MyApp({ Component, pageProps }) {
+const MyApp: React.FC<AppProps> = ({ Component, pageProps }) => {
   return (
     <>
       <Head>
@@ -29,6 +30,6 @@ function MyApp({ Component, pageProps }) {
       <Script id="wowInit" strategy="lazyOnload">{`new WOW().init();`}</Script>
     </>
   );
-}
+};
 
 export default MyApp;

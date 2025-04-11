@@ -1,8 +1,12 @@
 /* eslint-disable @next/next/no-css-tags */
 import React from "react";
 import Head from "next/head";
+import { DarkThemeProps } from "../models/themes";
 
-const DarkTheme = ({ children, useSkin, mobileappstyle }) => {
+const DarkTheme: React.FC<DarkThemeProps> = ({
+  children,
+  mobileappstyle = false,
+}) => {
   React.useEffect(() => {
     window.theme = "dark";
   }, []);
@@ -10,11 +14,6 @@ const DarkTheme = ({ children, useSkin, mobileappstyle }) => {
     <>
       <Head>
         <link rel="stylesheet" href="/css/dark.css" />
-        {/* {useSkin ? (
-          <link rel="stylesheet" href="/css/arch-skin-dark.css" />
-        ) : (
-          ""
-        )} */}
         {mobileappstyle ? (
           <link href="/css/mobile-app-dark.css" rel="stylesheet" />
         ) : (

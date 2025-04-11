@@ -28,28 +28,40 @@ import { s3 } from "../../config/awsConfig.js";
 // Custom hooks
 import useAlert from "../useAlert";
 import { CopperLoading } from "respinner";
+import { RootState } from "../../redux/store";
+import { BlockchainStates } from "../../models/blockchainStates";
+import { Property, PropertyMetaData } from "../../models/property";
 
-const MyPropertiesTitles = () => {
-  const [myPropertiesTitles, setMyPropertiesTitles] = useState([]);
-  const [loadingState, setLoadingState] = useState("not-loaded");
-  const [propertyToUpdate, setPropertyToUpdate] = useState(null);
-  const [selectedDocumentType, setSelectedDocumentType] = useState("");
-  const [alert, showAlert, showError] = useAlert(10000);
-  const [activeTransaction, setActiveTransaction] = useState(false);
-  const [propertyMetadata, updatedPropertyMetadata] = useState({
+const MyPropertiesTitles = (): JSX.Element => {
+  const [myPropertiesTitles, setMyPropertiesTitles] = useState<Property[]>([]);
+  const [loadingState, setLoadingState] = useState<"not-loaded" | "loaded">(
+    "not-loaded"
+  );
+  const [propertyToUpdate, setPropertyToUpdate] = useState<Property | null>(
+    null
+  );
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string>("");
+  const [alert, showAlert] = useAlert(10000);
+  const [activeTransaction, setActiveTransaction] = useState<boolean>(false);
+  const [propertyMetadata, setPropertyMetadata] = useState<PropertyMetaData>({
     documents: {},
   });
   const [loadingData, setLoadingData] = useState(true);
-  const blockchain = useSelector((state) => state.blockchain);
+  const blockchain = useSelector<RootState, BlockchainStates>(
+    (state) => state.blockchain
+  );
 
   /**
    * Delays setting the loading state to false after 3 seconds.
    */
   useEffect(() => {
-    const time = setTimeout(() => {
+    let timer: NodeJS.Timeout | undefined;
+    timer = setTimeout(() => {
       setLoadingData(false);
     }, 3000);
-    return () => clearTimeout(time);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   /**
@@ -65,9 +77,9 @@ const MyPropertiesTitles = () => {
    * Opens the add document modal and sets the property to update.
    * @param {Object} property - The property to be updated.
    */
-  function openAddDocumentModal(property) {
+  function openAddDocumentModal(property: Property) {
     setPropertyToUpdate(property);
-    updatedPropertyMetadata(property);
+    setPropertyMetadata(property);
   }
 
   /**
@@ -75,13 +87,13 @@ const MyPropertiesTitles = () => {
    */
   function handleAddDocumentModalClose() {
     setPropertyToUpdate(null);
-    setSelectedDocumentType(null);
+    setSelectedDocumentType("");
   }
 
   /**
    * Fetches and loads the user's property titles from the blockchain.
    */
-  async function loadMyPropertiesTitles() {
+  async function loadMyPropertiesTitles(): Promise<void> {
     const web3Modal = new Web3Modal({
       network: "mainnet",
       cacheProvider: true,
@@ -98,10 +110,9 @@ const MyPropertiesTitles = () => {
 
     /* Returns recorded property by specific user based on their wallet address */
     const data = await marketContract.fetchUserProperty();
-    console.log("fetch market Items", data);
 
     const items = await Promise.all(
-      data.map(async (i) => {
+      data.map(async (i: any): Promise<Property> => {
         // get NFT URI to fetch the metadata
         const tokenUri = await marketContract.tokenURI(i.tokenId);
 
@@ -139,7 +150,10 @@ const MyPropertiesTitles = () => {
    * @param {number} tokenId - The token ID of the property to update.
    * @param {string} newMetadataUri - The new metadata URI to set.
    */
-  async function updatePropertyMetadata(tokenId, newMetadataUri) {
+  async function updatePropertyMetadata(
+    tokenId: string,
+    newMetadataUri: string
+  ): Promise<void> {
     const web3Modal = new Web3Modal();
     const connection = await web3Modal.connect();
     const provider = new ethers.providers.Web3Provider(connection);
@@ -161,7 +175,7 @@ const MyPropertiesTitles = () => {
 
       showAlert(true, "Document(s) uploaded successfully!");
       setActiveTransaction(false);
-    } catch (err) {
+    } catch {
       setActiveTransaction(false);
       showAlert(true, "Upload failed. Try again later or contact support.");
     }
@@ -172,11 +186,12 @@ const MyPropertiesTitles = () => {
    * @param {string} urlToDelete - The URL of the document to delete.
    * @param {string} documentType - The type of document being deleted.
    */
-  const handleDeleteUrl = async (urlToDelete, documentType) => {
+  const handleDeleteUrl = async (
+    urlToDelete: string,
+    documentType: string
+  ): Promise<void> => {
     try {
       const url = new URL(urlToDelete);
-
-      console.log("Url from URL", url);
 
       // Extract the bucket name and encoded key from the URL
       const bucketName = url.hostname.split(".")[0];
@@ -184,8 +199,6 @@ const MyPropertiesTitles = () => {
 
       // Remove any '+' or '%20' from the encoded key
       encodedKey = encodedKey.replace(/\+|%20/g, " ");
-
-      console.log("encodedKey", encodedKey);
 
       // Delete the object from the S3 bucket using the original key
       await s3
@@ -198,7 +211,7 @@ const MyPropertiesTitles = () => {
       console.error("Error deleting object from S3:", error);
       // Handle the error, show an error message, etc.
     }
-    updatedPropertyMetadata((prevData) => ({
+    setPropertyMetadata((prevData: PropertyMetaData) => ({
       ...prevData,
       documents: {
         ...prevData.documents,
@@ -216,13 +229,16 @@ const MyPropertiesTitles = () => {
    * @param {Object} e - The event object from the file input.
    * @param {string} selectedDocumentType - The type of document being uploaded.
    */
-  async function handleFileChange(e, selectedDocumentType) {
+  async function handleFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+    selectedDocumentType: string
+  ): Promise<void> {
     if (!selectedDocumentType) {
       showAlert(true, "Please select document Type(e,g, Deed,...");
       return;
     }
 
-    const files = Array.from(e.target.files);
+    const files = e.target.files ? Array.from(e.target.files) : [];
 
     try {
       // upload files to S3
@@ -242,7 +258,7 @@ const MyPropertiesTitles = () => {
 
       const uploadFileUrls = await Promise.all(fileUploadPromises);
 
-      updatedPropertyMetadata((prevData) => {
+      setPropertyMetadata((prevData) => {
         return {
           ...prevData,
           documents: {
@@ -259,15 +275,15 @@ const MyPropertiesTitles = () => {
       });
 
       console.log("Property from upload files", propertyMetadata);
-    } catch (e) {
-      console.log(e);
+    } catch (err) {
+      console.log(err);
     }
   }
 
   /**
    * Saves updated property metadata with new documents to S3 and the blockchain.
    */
-  async function handleAddDocumentModalSave() {
+  async function handleAddDocumentModalSave(): Promise<void> {
     if (!selectedDocumentType) {
       // You could show an error message here
       return showAlert(true, "Please select a Document Type(e.g, Deed)");
@@ -291,7 +307,7 @@ const MyPropertiesTitles = () => {
 
     // We add the newMetaDataUri +  the propertyToUpdate tokenID selected from clicking on Add Additional Documents
     let propertyTokenURI = await marketContract.tokenURI(
-      propertyToUpdate.tokenId
+      propertyToUpdate!.tokenId
     );
 
     console.log("property URI", propertyTokenURI);
@@ -307,8 +323,6 @@ const MyPropertiesTitles = () => {
     // Remove any '+' or '%20' from the encoded key
     encodedKey = encodedKey.replace(/\+|%20/g, " ");
 
-    console.log("encodedKey", encodedKey);
-
     try {
       // Get the existing JSON file from Amazon S3
       const getParams = {
@@ -317,10 +331,8 @@ const MyPropertiesTitles = () => {
       };
 
       const existingData = await s3.getObject(getParams).promise();
-      const existingMetadata = JSON.parse(existingData.Body.toString());
-
-      console.log("existingData", existingData);
-      console.log("existingMetadata ", existingMetadata);
+      const body = existingData.Body as Buffer;
+      const existingMetadata = JSON.parse(body.toString());
 
       // Update the existing metadata with the new document information
       existingMetadata.documents = {
@@ -330,8 +342,6 @@ const MyPropertiesTitles = () => {
 
       // Convert the updated metadata to a string
       const updatedMetadata = JSON.stringify(existingMetadata);
-
-      console.log("updatedMetadata", updatedMetadata);
 
       // Create parameters for S3 upload
       const putParams = {
@@ -350,9 +360,9 @@ const MyPropertiesTitles = () => {
       console.log("newMetadataUri", newMetadataUri);
 
       // Update the property metadata on-chain with the new metadata URI
-      await updatePropertyMetadata(propertyToUpdate.tokenId, newMetadataUri);
+      await updatePropertyMetadata(propertyToUpdate!.tokenId, newMetadataUri);
       const updatedProperties = myPropertiesTitles.map((property) =>
-        property.tokenId === propertyToUpdate.tokenId
+        property.tokenId === propertyToUpdate!.tokenId
           ? { ...property, ...existingMetadata }
           : property
       );
@@ -585,7 +595,7 @@ const MyPropertiesTitles = () => {
         <Modal.Footer>
           <Button
             variant="secondary"
-            disabled={activeTransaction ? 1 : 0}
+            disabled={activeTransaction}
             onClick={handleAddDocumentModalClose}>
             Close
           </Button>
