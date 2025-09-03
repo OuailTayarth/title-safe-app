@@ -6,7 +6,7 @@ TitleSafe is a full stack web application built with Next.js/TypeScript on the f
 
 ## Reason for Building This App
 
-I built this project during my last role as a front-end developer at Rose Law Group, the company I was working at. It was part of an MVP proposed to Arizona County, USA, to solve issues in the process of recording property titles for homeowners
+I built this project during my lastest role as a front-end engineer at Rose Law Group. It's an MVP web application for a U.S government agency to enable more secure property title recording for homeowners, delivering a workin proof of concept adopted for regional pilot testing
 
 ## Technology Used:
 
